@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WanderPlan - Interactive Tour Planner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --card-bg: #ffffff;
+      --surface-bg: #f8fafc;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    .dark {
+      --primary: #3b82f6;
+      --card-bg: #1e293b;
+      --surface-bg: #0f172a;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    body {
+      background-color: var(--surface-bg);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    .glass-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .print-only { display: block !important; }
+      .glass-card { border: 1px solid #ccc !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen custom-scrollbar antialiased">
+
+  <!-- Top Navigation Header -->
+  <header class="glass-card sticky top-0 z-30 border-b shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
+          🌍
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">WanderPlan</h1>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">Smart Tour Planner</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Interactive Itinerary, Budget & Route Builder</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <select id="presetSelect" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="" disabled selected>📂 Load Tour Preset...</option>
+          <option value="tokyo">🇯🇵 7 Days in Tokyo & Kyoto</option>
+          <option value="paris">🇫🇷 5 Days Paris Romance & Art</option>
+          <option value="swiss">🇨🇭 6 Days Swiss Alps Adventure</option>
+          <option value="bali">🇮🇩 6 Days Tropical Bali Retreat</option>
+        </select>
+
+        <select id="currencySelect" class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+          <option value="$">$ USD</option>
+          <option value="€">€ EUR</option>
+          <option value="£">£ GBP</option>
+          <option value="₹">₹ INR</option>
+          <option value="¥">¥ JPY</option>
+        </select>
+
+        <button id="exportJsonBtn" title="Export as JSON" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export
+        </button>
+
+        <button id="printBtn" title="Print Itinerary" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Print / PDF
+        </button>
+
+        <button id="themeToggleBtn" class="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Toggle Theme">
+          🌓
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Trip Header Card / Editable Banner -->
+    <div class="glass-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+      <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-500/5 dark:bg-blue-400/5 blur-3xl pointer-events-none"></div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+        <!-- Trip Name & Destination -->
+        <div class="md:col-span-6 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span> Active Tour Plan
+            </span>
+          </div>
+          <input id="tripTitleInput" type="text" value="Japan Discovery: Tokyo, Kyoto & Mt. Fuji" 
+                 class="w-full text-xl sm:text-2xl font-bold bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none transition py-1 text-slate-900 dark:text-white"
+                 placeholder="Enter Trip Name...">
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <span class="flex items-center gap-1">
+              📍 <input id="tripDestInput" type="text" value="Tokyo & Kyoto, Japan" class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none w-36 text-slate-700 dark:text-slate-300">
+            </span>
+            <span>•</span>
+            <span class="flex items-center gap-1">
+              👥 <input id="travelersInput" type="number" min="1" max="50" value="2" class="w-10 bg-transparent border-b border-slate-300 dark:border-slate-700 text-center font-bold text-slate-800 dark:text-slate-200"> Travelers
+            </span>
+            <span>•</span>
+            <span class="flex items-center gap-1">
+              🏷️ <select id="tripStyleInput" class="bg-transparent border-b border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none">
+                <option value="Cultural & Culinary">Cultural & Culinary</option>
+                <option value="Adventure & Hiking">Adventure & Nature</option>
+                <option value="Relaxed & Leisure">Relaxed & Leisure</option>
+                <option value="Luxury & Romantic">Luxury & Romantic</option>
+                <option value="Backpacking & Budget">Backpacking & Budget</option>
+              </select>
+            </span>
+          </div>
+        </div>
+
+        <!-- Trip Dates & Quick Stats -->
+        <div class="md:col-span-6 flex flex-wrap items-center justify-start md:justify-end gap-3 text-xs">
+          <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase font-semibold">Start Date</div>
+              <input id="startDateInput" type="date" value="2026-10-10" class="bg-transparent text-slate-800 dark:text-slate-200 font-medium focus:outline-none">
+            </div>
+            <span class="text-slate-400">→</span>
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase font-semibold">End Date</div>
+              <input id="endDateInput" type="date" value="2026-10-16" class="bg-transparent text-slate-800 dark:text-slate-200 font-medium focus:outline-none">
+            </div>
+          </div>
+
+          <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-3.5 py-2 rounded-xl border border-blue-200 dark:border-blue-800/50 text-center">
+            <div class="text-[10px] uppercase font-semibold text-blue-500 dark:text-blue-400">Total Duration</div>
+            <div id="totalDaysBadge" class="text-base font-extrabold">7 Days</div>
+          </div>
+
+          <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/50 text-center">
+            <div class="text-[10px] uppercase font-semibold text-emerald-500 dark:text-emerald-400">Activities</div>
+            <div id="totalActivitiesBadge" class="text-base font-extrabold">14 Stops</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto pb-1 no-print">
+      <button class="nav-tab active px-4 py-2.5 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 flex items-center gap-2 whitespace-nowrap" data-target="itinerarySection">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Daily Itinerary
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap" data-target="routeMapSection">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Route & Waypoint Map
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap" data-target="budgetSection">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Budget & Costs
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap" data-target="packingSection">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        Packing Checklist
+      </button>
+      <button class="nav-tab px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap" data-target="summarySection">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Full Tour Summary
+      </button>
+    </div>
+
+    <!-- TAB 1: DAILY ITINERARY BUILDER -->
+    <section id="itinerarySection" class="tab-pane space-y-6">
+      
+      <!-- Day Selector Row -->
+      <div class="glass-card rounded-xl p-3 flex items-center justify-between gap-3 overflow-x-auto shadow-sm">
+        <div id="daySelectorContainer" class="flex items-center gap-2 overflow-x-auto py-1">
+          <!-- Dynamic Day Buttons Generated by JS -->
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="addDayBtn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800 transition flex items-center gap-1 border border-blue-200 dark:border-blue-800">
+            <span>+</span> Add Day
+          </button>
+          <button id="deleteDayBtn" class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition border border-red-200 dark:border-red-900/50" title="Delete Active Day">
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Day Header Info -->
+      <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span id="currentDayBadge" class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-600 text-white">Day 1</span>
+              <input id="currentDayTitleInput" type="text" value="Arrival & Electric Shinjuku Nights" class="font-bold text-lg text-slate-800 dark:text-slate-100 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none transition w-full sm:w-80">
+            </div>
+            <p id="currentDayDateText" class="text-xs text-slate-500 dark:text-slate-400">Saturday, October 10 • Tokyo Area</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-xs">
+              <span class="text-slate-400">Forecast:</span>
+              <select id="dayWeatherSelect" class="bg-transparent font-medium text-slate-700 dark:text-slate-200 focus:outline-none">
+                <option value="☀️ Sunny & Clear">☀️ Sunny 22°C</option>
+                <option value="⛅ Partly Cloudy">⛅ Mild 19°C</option>
+                <option value="🌧️ Light Rain">🌧️ Rain 16°C</option>
+                <option value="❄️ Crisp & Cool">❄️ Cool 12°C</option>
+              </select>
+            </div>
+
+            <button id="openAddActivityModalBtn" class="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1.5 shadow-md shadow-blue-500/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Add Activity
+            </button>
+          </div>
+        </div>
+
+        <!-- Activity Cards List for Current Day -->
+        <div id="activityListContainer" class="space-y-3">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div id="noActivitiesMessage" class="hidden text-center py-10 space-y-2">
+          <div class="text-4xl">🗺️</div>
+          <p class="font-semibold text-slate-600 dark:text-slate-300">No activities planned for this day yet.</p>
+          <p class="text-xs text-slate-400">Click "+ Add Activity" above or pick a recommendation below!</p>
+        </div>
+
+        <!-- Smart Quick Recommendations Pill Bar -->
+        <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              ✨ Quick Suggestions for Day
+            </span>
+            <span class="text-slate-400">Click to add in 1-click</span>
+          </div>
+          <div id="quickSuggestionsBar" class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+            <!-- Injected by JS based on destination -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: INTERACTIVE ROUTE & WAYPOINT MAP -->
+    <section id="routeMapSection" class="tab-pane hidden space-y-6">
+      <div class="glass-card rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              🗺️ Interactive Waypoint & Route Simulator
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Visual sequence of today's stops with calculated walk & transit paths</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold" id="mapDayBadge">Showing Day 1 Route</span>
+            <button id="centerMapBtn" class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Center View</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-8 bg-slate-900 rounded-xl p-4 relative min-h-[360px] overflow-hidden flex flex-col justify-between border border-slate-800">
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:32px_32px] opacity-40"></div>
+            
+            <div class="relative z-10 flex items-center justify-between text-xs text-slate-300 bg-slate-800/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700">
+              <span id="routeStatsSummary">🛣️ Route: 4 Stops • Approx. 8.4 km total</span>
+              <span class="flex items-center gap-1.5 text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Route Connected
+              </span>
+            </div>
+
+            <svg id="routeSvgCanvas" class="relative z-10 w-full h-[260px] my-2 cursor-pointer">
+              <!-- Rendered dynamically -->
+            </svg>
+
+            <div class="relative z-10 flex items-center justify-between text-[11px] text-slate-400">
+              <span>💡 Click any waypoint marker above to inspect details</span>
+              <span class="flex items-center gap-2">
+                <span class="inline-block w-2.5 h-0.5 bg-blue-400"></span> Walking / Metro path
+              </span>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 glass-card rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Waypoint Navigation Order</h3>
+            <div id="routeTimelineContainer" class="space-y-3 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar text-xs">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: BUDGET & EXPENSES -->
+    <section id="budgetSection" class="tab-pane hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-4 space-y-5">
+          <div class="glass-card rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              💰 Budget Target & Remaining
+            </h3>
+
+            <div class="space-y-1">
+              <label class="text-xs text-slate-500 dark:text-slate-400">Total Planned Budget:</label>
+              <div class="flex items-center gap-2">
+                <span class="text-lg font-bold text-slate-700 dark:text-slate-300" id="currencySymbolLabel">$</span>
+                <input id="totalBudgetInput" type="number" step="50" value="2800" class="w-full text-xl font-bold bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs font-medium">
+                <span class="text-slate-500">Budget Allocated:</span>
+                <span id="budgetPercentText" class="font-bold text-blue-600 dark:text-blue-400">65%</span>
+              </div>
+              <div class="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden flex">
+                <div id="budgetProgressBar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 65%;"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2 text-xs">
+              <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold">Planned Cost</span>
+                <span id="totalPlannedCostBadge" class="text-base font-extrabold text-slate-800 dark:text-slate-100">$1,820</span>
+              </div>
+              <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50">
+                <span class="text-emerald-500 block text-[10px] uppercase font-bold">Remaining</span>
+                <span id="remainingBudgetBadge" class="text-base font-extrabold text-emerald-600 dark:text-emerald-400">$980</span>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 text-xs flex justify-between items-center">
+              <span class="text-slate-600 dark:text-slate-300">Cost per person:</span>
+              <span id="costPerPersonBadge" class="font-bold text-blue-700 dark:text-blue-300">$910 / person</span>
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 shadow-sm space-y-3">
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500">Quick Expense Logger</h4>
+            <div class="space-y-2 text-xs">
+              <input id="customExpenseName" type="text" placeholder="e.g. Bullet Train Shinkansen Pass" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+              <div class="grid grid-cols-2 gap-2">
+                <select id="customExpenseCategory" class="px-2 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+                  <option value="Stay">🏨 Hotel / Stay</option>
+                  <option value="Food">🍜 Food & Dining</option>
+                  <option value="Transport">🚄 Transport</option>
+                  <option value="Activities">🎟️ Activities</option>
+                  <option value="Shopping">🛍️ Shopping / Misc</option>
+                </select>
+                <input id="customExpenseCost" type="number" placeholder="Cost" class="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+              </div>
+              <button id="addCustomExpenseBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                + Add to Budget
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-8 space-y-5">
+          <div class="glass-card rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Spending Breakdown by Category</h3>
+            <div id="categoryBreakdownBars" class="space-y-3 text-xs">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Itemized Tour Expenses</h3>
+              <span id="expenseCountText" class="text-xs text-slate-400">14 items</span>
+            </div>
+            
+            <div class="overflow-x-auto max-h-[320px] custom-scrollbar">
+              <table class="w-full text-left text-xs">
+                <thead class="text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">
+                  <tr>
+                    <th class="py-2 font-medium">Activity / Item</th>
+                    <th class="py-2 font-medium">Category</th>
+                    <th class="py-2 font-medium">Day</th>
+                    <th class="py-2 font-medium text-right">Cost</th>
+                    <th class="py-2 font-medium text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="expenseTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                  <!-- Rendered by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 4: PACKING CHECKLIST -->
+    <section id="packingSection" class="tab-pane hidden space-y-6">
+      <div class="glass-card rounded-2xl p-5 shadow-sm space-y-5">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
+          <div>
+            <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              🎒 Smart Packing Assistant
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Customized checklist tailored to your travel style and activities</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              <div class="text-xs font-bold text-slate-700 dark:text-slate-200" id="packingProgressText">12 of 18 Packed</div>
+              <div class="text-[10px] text-slate-400">Keep ready before departure</div>
+            </div>
+            <div class="w-20 bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+              <div id="packingProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 66%;"></div>
+            </div>
+            <button id="resetPackingBtn" class="text-xs px-2.5 py-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border rounded-lg">Reset</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 max-w-md text-xs">
+          <input id="newPackingItemInput" type="text" placeholder="Add custom item (e.g. Universal Adapter)..." class="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+          <select id="newPackingCategorySelect" class="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+            <option value="Documents">📄 Documents</option>
+            <option value="Electronics">🔌 Electronics</option>
+            <option value="Clothing">👕 Clothing</option>
+            <option value="Health">💊 Health & Care</option>
+            <option value="Gear">🎒 Gear & Misc</option>
+          </select>
+          <button id="addPackingItemBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shrink-0">
+            + Add
+          </button>
+        </div>
+
+        <div id="packingListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: COMPLETE TOUR SUMMARY & EXPORT -->
+    <section id="summarySection" class="tab-pane hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 shadow-sm space-y-6">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-5">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Complete Master Brief</span>
+            <h2 id="summaryTourTitle" class="text-2xl font-black text-slate-900 dark:text-white">Japan Discovery: Tokyo & Kyoto</h2>
+            <p id="summaryTourSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-1">7 Days • 2 Travelers • Cultural & Culinary Trip</p>
+          </div>
+
+          <div class="flex items-center gap-2 no-print">
+            <button onclick="window.print()" class="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-2 shadow-sm">
+              🖨️ Print Master Itinerary
+            </button>
+          </div>
+        </div>
+
+        <div id="masterSummaryTimeline" class="space-y-6">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-xs space-y-2">
+          <div class="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+            🚨 Travel & Emergency Contact Memo
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-slate-600 dark:text-slate-300">
+            <div><strong>Local Emergency:</strong> Police: 110 • Ambulance: 119</div>
+            <div><strong>Embassy Assistance:</strong> +81-3-3224-5000</div>
+            <div><strong>Hotel Reception:</strong> Shinjuku Granbell (+81-3-5155-2666)</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ADD / EDIT ACTIVITY MODAL DIALOG -->
+  <div id="activityModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4 border border-slate-300 dark:border-slate-700">
+      
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h3 id="activityModalTitle" class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          📍 Add Activity
+        </h3>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">&times;</button>
+      </div>
+
+      <form id="activityForm" class="space-y-3.5 text-xs">
+        <input type="hidden" id="editingActivityId" value="">
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Activity Name / Place</label>
+          <input id="modalActivityName" type="text" required placeholder="e.g. Fushimi Inari Torii Gates Hike" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Time Slot</label>
+            <input id="modalActivityTime" type="time" value="09:30" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Category</label>
+            <select id="modalActivityCategory" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+              <option value="Sightseeing">🏛️ Sightseeing</option>
+              <option value="Food">🍜 Food & Dining</option>
+              <option value="Transport">🚄 Travel & Transit</option>
+              <option value="Stay">🏨 Hotel / Stay</option>
+              <option value="Shopping">🛍️ Shopping</option>
+              <option value="Activity">🎭 Experience / Tour</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Estimated Cost</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-slate-400 modal-currency-symbol">$</span>
+              <input id="modalActivityCost" type="number" step="5" min="0" value="25" class="w-full pl-7 pr-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Duration (Hours)</label>
+            <input id="modalActivityDuration" type="number" step="0.5" min="0.5" max="12" value="2" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Location / Address</label>
+          <input id="modalActivityLocation" type="text" placeholder="e.g. 68 Fukakusa Yabunouchicho, Fushimi Ward" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes / Tips (Tickets, Dress code, etc.)</label>
+          <textarea id="modalActivityNotes" rows="2" placeholder="e.g. Wear comfortable sneakers; arrive early to avoid crowds." class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+          <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">
+            Save Activity
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC IN JAVASCRIPT -->
+  <script>
+    const PRESETS = {
+      tokyo: {
+        title: "Japan Discovery: Tokyo & Kyoto",
+        destination: "Tokyo & Kyoto, Japan",
+        travelers: 2,
+        style: "Cultural & Culinary",
+        currency: "$",
+        totalBudget: 3200,
+        startDate: "2026-10-10",
+        endDate: "2026-10-16",
+        days: [
+          {
+            dayNum: 1,
+            title: "Arrival & Electric Shinjuku Nights",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "a1", name: "Land at Narita / Haneda & Narita Express", time: "14:00", category: "Transport", cost: 60, duration: 2, location: "Haneda Airport Terminal 3", notes: "Activate JR Rail Pass or get Welcome Suica IC card." },
+              { id: "a2", name: "Check-in Hotel & Unpack", time: "16:30", category: "Stay", cost: 180, duration: 1.5, location: "Shinjuku Granbell Hotel", notes: "Rest and refresh after flight." },
+              { id: "a3", name: "Shinjuku Omoide Yokocho Yakitori Dinner", time: "19:00", category: "Food", cost: 45, duration: 2, location: "Memory Lane, Shinjuku", notes: "Cash only alleyway with legendary skewers & draft beer." },
+              { id: "a4", name: "Tokyo Metropolitan Government Bldg Observatory", time: "21:30", category: "Sightseeing", cost: 0, duration: 1, location: "Nishi-Shinjuku", notes: "Free 45th floor panoramic skyline view of Tokyo." }
+            ]
+          },
+          {
+            dayNum: 2,
+            title: "Historic Asakusa & Pop Culture Akihabara",
+            weather: "⛅ Partly Cloudy",
+            activities: [
+              { id: "a5", name: "Senso-ji Temple & Nakamise-dori", time: "09:00", category: "Sightseeing", cost: 10, duration: 2.5, location: "Asakusa, Taito City", notes: "Oldest Buddhist temple in Tokyo. Try freshly grilled melon pan." },
+              { id: "a6", name: "Tokyo Skytree & Solamachi", time: "12:00", category: "Sightseeing", cost: 35, duration: 2, location: "Oshiage, Sumida", notes: "Pre-booked tower tickets for observation deck." },
+              { id: "a7", name: "Ramen Street Lunch", time: "14:30", category: "Food", cost: 20, duration: 1, location: "Tokyo Station Ramen Street", notes: "Try rich Tonkotsu or Tsukemen dipping noodles." },
+              { id: "a8", name: "Akihabara Tech & Anime Exploration", time: "16:30", category: "Activity", cost: 40, duration: 3, location: "Akihabara Electric Town", notes: "Retro gaming, Mandarake, and arcade claw machines." }
+            ]
+          },
+          {
+            dayNum: 3,
+            title: "Meiji Shrine, Shibuya Sky & Harajuku",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "a9", name: "Meiji Jingu Forest Shrine Walk", time: "09:30", category: "Sightseeing", cost: 0, duration: 2, location: "Yoyogi Park, Shibuya", notes: "Tranquil cedar forest sanctuary in the heart of Tokyo." },
+              { id: "a10", name: "Takeshita Street Crêpes & Harajuku Fashion", time: "12:00", category: "Shopping", cost: 30, duration: 2, location: "Harajuku, Shibuya", notes: "Marion Crêpes & vintage fashion shopping." },
+              { id: "a11", name: "Shibuya Crossing & Hachiko Statue", time: "15:00", category: "Sightseeing", cost: 0, duration: 1, location: "Shibuya Scramble", notes: "World's busiest pedestrian crossing." },
+              { id: "a12", name: "Shibuya SKY Rooftop Sunset View", time: "17:30", category: "Activity", cost: 28, duration: 2, location: "Shibuya Scramble Square", notes: "360-degree open-air glass observation deck at golden hour." }
+            ]
+          },
+          {
+            dayNum: 4,
+            title: "Shinkansen to Kyoto & Fushimi Inari Torii",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "a13", name: "Tokaido Shinkansen Bullet Train to Kyoto", time: "08:30", category: "Transport", cost: 130, duration: 2.5, location: "Tokyo Station -> Kyoto Station", notes: "Grab an Ekiben bento box for the train; Mt. Fuji view on right side." },
+              { id: "a14", name: "Fushimi Inari 10,000 Vermilion Gates Hike", time: "14:00", category: "Sightseeing", cost: 0, duration: 3, location: "Fushimi Ward, Kyoto", notes: "Hike up to Yotsutsuji intersection for great sunset vista." },
+              { id: "a15", name: "Gion District Kaiseki Dinner", time: "18:30", category: "Food", cost: 85, duration: 2.5, location: "Hanamikoji Street, Gion", notes: "Traditional multi-course Kyoto seasonal dinner." }
+            ]
+          }
+        ],
+        packing: [
+          { item: "Passport & Rail Pass vouchers", category: "Documents", checked: true },
+          { item: "Pocket WiFi / e-SIM activation QR", category: "Electronics", checked: true },
+          { item: "Comfortable walking shoes (15k+ steps/day)", category: "Clothing", checked: true },
+          { item: "Universal power adapter & power bank", category: "Electronics", checked: true },
+          { item: "Slip-on shoes for temple visits", category: "Clothing", checked: false },
+          { item: "Coin purse (Japan is cash-friendly)", category: "Gear", checked: true },
+          { item: "Rain umbrella / packable poncho", category: "Gear", checked: false },
+          { item: "Small personal trash bag (few public bins)", category: "Gear", checked: false },
+          { item: "Basic travel medication & blister tape", category: "Health", checked: true }
+        ]
+      },
+
+      paris: {
+        title: "Paris Romance: Art, Seine & Gastronomy",
+        destination: "Paris, France",
+        travelers: 2,
+        style: "Cultural & Culinary",
+        currency: "€",
+        totalBudget: 2500,
+        startDate: "2026-09-15",
+        endDate: "2026-09-19",
+        days: [
+          {
+            dayNum: 1,
+            title: "Arrival, Montmartre & Sacré-Cœur",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "p1", name: "CDG Airport RER B Train into Paris", time: "10:30", category: "Transport", cost: 24, duration: 1.5, location: "Gare du Nord", notes: "Get Navigo Easy metro cards." },
+              { id: "p2", name: "Boutique Hotel Check-in", time: "13:00", category: "Stay", cost: 190, duration: 1, location: "Le Marais", notes: "Central base near cafes and galleries." },
+              { id: "p3", name: "Sacré-Cœur Basilica & Artists' Square", time: "15:30", category: "Sightseeing", cost: 0, duration: 3, location: "Montmartre", notes: "Panoramic view over the zinc rooftops of Paris." },
+              { id: "p4", name: "Classic French Bistro Dinner", time: "19:30", category: "Food", cost: 65, duration: 2, location: "Rue des Abbesses", notes: "Duck confit and crème brûlée." }
+            ]
+          },
+          {
+            dayNum: 2,
+            title: "The Louvre, Tuileries & Seine Cruise",
+            weather: "⛅ Partly Cloudy",
+            activities: [
+              { id: "p5", name: "Louvre Museum Timed Entry", time: "09:00", category: "Sightseeing", cost: 22, duration: 3.5, location: "Pyramide du Louvre", notes: "Mona Lisa, Winged Victory, Venus de Milo." },
+              { id: "p6", name: "Croissant & Coffee at Tuileries Gardens", time: "13:00", category: "Food", cost: 15, duration: 1, location: "Jardin des Tuileries", notes: "Relax by the green metal chairs." },
+              { id: "p7", name: "Eiffel Tower Sunset Viewing", time: "17:30", category: "Sightseeing", cost: 35, duration: 2.5, location: "Champ de Mars", notes: "Summit elevator tickets; sparkle show at 21:00." },
+              { id: "p8", name: "Bateaux-Mouches Seine River Cruise", time: "20:30", category: "Activity", cost: 30, duration: 1.5, location: "Pont de l'Alma", notes: "Illuminated monuments from the river." }
+            ]
+          }
+        ],
+        packing: [
+          { item: "Passports & museum reservations", category: "Documents", checked: true },
+          { item: "Smart casual evening wear", category: "Clothing", checked: true },
+          { item: "European 2-pin plug adapter", category: "Electronics", checked: true },
+          { item: "Anti-theft crossbody bag", category: "Gear", checked: true },
+          { item: "Comfortable leather walking sneakers", category: "Clothing", checked: true }
+        ]
+      },
+
+      swiss: {
+        title: "Swiss Alpine Wonders: Interlaken & Zermatt",
+        destination: "Switzerland",
+        travelers: 2,
+        style: "Adventure & Nature",
+        currency: "€",
+        totalBudget: 4200,
+        startDate: "2026-07-04",
+        endDate: "2026-07-09",
+        days: [
+          {
+            dayNum: 1,
+            title: "Zurich to Interlaken Scenic Rail",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "s1", name: "Zurich HB to Interlaken Ost Panoramic Train", time: "10:00", category: "Transport", cost: 75, duration: 2, location: "Interlaken", notes: "Swiss Travel Pass covers journey." },
+              { id: "s2", name: "Harder Kulm Funicular to Top of Interlaken", time: "14:30", category: "Sightseeing", cost: 42, duration: 2.5, location: "Harder Kulm", notes: "Two lakes view: Lake Thun and Lake Brienz." },
+              { id: "s3", name: "Traditional Swiss Fondue Supper", time: "18:30", category: "Food", cost: 55, duration: 2, location: "Unterseen Old Town", notes: "Gruyère and Emmental blend." }
+            ]
+          },
+          {
+            dayNum: 2,
+            title: "Jungfraujoch - Top of Europe",
+            weather: "❄️ Crisp & Cool",
+            activities: [
+              { id: "s4", name: "Eiger Express Cableway to Jungfraujoch", time: "08:30", category: "Activity", cost: 160, duration: 4.5, location: "Grindelwald Terminal", notes: "Ice Palace, Sphinx Observation Deck at 3,454m." },
+              { id: "s5", name: "Lauterbrunnen Valley Waterfall Walk", time: "14:30", category: "Sightseeing", cost: 0, duration: 2.5, location: "Staubbach Falls", notes: "72 cascading waterfalls in the canyon valley." }
+            ]
+          }
+        ],
+        packing: [
+          { item: "Swiss Travel Pass digital barcode", category: "Documents", checked: true },
+          { item: "Waterproof hiking boots & wool socks", category: "Clothing", checked: true },
+          { item: "Layered thermal fleece & windbreaker jacket", category: "Clothing", checked: true },
+          { item: "UV400 Polarized sunglasses (glacier glare)", category: "Gear", checked: true },
+          { item: "High SPF sunscreen & lip balm", category: "Health", checked: true }
+        ]
+      },
+
+      bali: {
+        title: "Bali Tropical Escapes: Ubud & Uluwatu",
+        destination: "Bali, Indonesia",
+        travelers: 2,
+        style: "Relaxed & Leisure",
+        currency: "$",
+        totalBudget: 1900,
+        startDate: "2026-11-01",
+        endDate: "2026-11-06",
+        days: [
+          {
+            dayNum: 1,
+            title: "Ubud Arrival & Sacred Monkey Forest",
+            weather: "☀️ Sunny & Clear",
+            activities: [
+              { id: "b1", name: "Private Airport Chauffeur to Ubud Jungle Villa", time: "11:00", category: "Transport", cost: 25, duration: 1.5, location: "Denpasar to Ubud", notes: "Stop for fresh coconut on route." },
+              { id: "b2", name: "Sacred Monkey Forest Sanctuary Walk", time: "14:30", category: "Sightseeing", cost: 8, duration: 2, location: "Padangtegal, Ubud", notes: "Keep sunglasses and shiny items secure." },
+              { id: "b3", name: "Balinese Nasi Campur Organic Feast", time: "18:00", category: "Food", cost: 18, duration: 2, location: "Warung Bintang", notes: "Authentic spices and satay lilit." }
+            ]
+          },
+          {
+            dayNum: 2,
+            title: "Tegallalang Rice Terraces & Waterfall Swims",
+            weather: "⛅ Partly Cloudy",
+            activities: [
+              { id: "b4", name: "Sunrise at Tegallalang Rice Terraces & Swing", time: "07:30", category: "Activity", cost: 20, duration: 3, location: "Tegallalang", notes: "Breathtaking layered green valley mist." },
+              { id: "b5", name: "Tibumana Secret Waterfall Swim", time: "12:00", category: "Sightseeing", cost: 5, duration: 2, location: "Bangli Regency", notes: "Pristine jungle natural pool." },
+              { id: "b6", name: "Traditional 90-min Balinese Herbal Massage", time: "16:00", category: "Activity", cost: 25, duration: 1.5, location: "Karsa Spa Ubud", notes: "Frangipani essential oil body scrub." }
+            ]
+          }
+        ],
+        packing: [
+          { item: "Passport with 6+ months validity & e-VOA", category: "Documents", checked: true },
+          { item: "Light breathable linen clothes & swimwear", category: "Clothing", checked: true },
+          { item: "Natural insect repellent / mosquito spray", category: "Health", checked: true },
+          { item: "Waterproof dry bag for boat & waterfalls", category: "Gear", checked: true }
+        ]
+      }
+    };
+
+    const DESTINATION_SUGGESTIONS = {
+      default: [
+        { name: "Local Street Food Tour", category: "Food", cost: 35, duration: 2.5, notes: "Taste the best local delicacies with a resident guide." },
+        { name: "Hop-on Hop-off City Explorer", category: "Sightseeing", cost: 28, duration: 3, notes: "Effortless overview of the top iconic sights." },
+        { name: "Sunset Viewpoint & Cocktails", category: "Activity", cost: 25, duration: 2, notes: "Best golden hour photography spot in the city." },
+        { name: "Historic Museum & Art Gallery", category: "Sightseeing", cost: 18, duration: 2, notes: "Discover national heritage and masterworks." },
+        { name: "Evening Canal or River Cruise", category: "Activity", cost: 30, duration: 1.5, notes: "Scenic illuminated landmarks from the water." }
+      ]
+    };
+
+    let tourState = JSON.parse(JSON.stringify(PRESETS.tokyo));
+    let activeDayIndex = 0;
+
+    const tripTitleInput = document.getElementById('tripTitleInput');
+    const tripDestInput = document.getElementById('tripDestInput');
+    const travelersInput = document.getElementById('travelersInput');
+    const tripStyleInput = document.getElementById('tripStyleInput');
+    const startDateInput = document.getElementById('startDateInput');
+    const endDateInput = document.getElementById('endDateInput');
+    const totalDaysBadge = document.getElementById('totalDaysBadge');
+    const totalActivitiesBadge = document.getElementById('totalActivitiesBadge');
+
+    const daySelectorContainer = document.getElementById('daySelectorContainer');
+    const addDayBtn = document.getElementById('addDayBtn');
+    const deleteDayBtn = document.getElementById('deleteDayBtn');
+
+    const currentDayBadge = document.getElementById('currentDayBadge');
+    const currentDayTitleInput = document.getElementById('currentDayTitleInput');
+    const currentDayDateText = document.getElementById('currentDayDateText');
+    const dayWeatherSelect = document.getElementById('dayWeatherSelect');
+    const activityListContainer = document.getElementById('activityListContainer');
+    const noActivitiesMessage = document.getElementById('noActivitiesMessage');
+    const quickSuggestionsBar = document.getElementById('quickSuggestionsBar');
+
+    const currencySelect = document.getElementById('currencySelect');
+    const presetSelect = document.getElementById('presetSelect');
+    const totalBudgetInput = document.getElementById('totalBudgetInput');
+    const budgetProgressBar = document.getElementById('budgetProgressBar');
+    const budgetPercentText = document.getElementById('budgetPercentText');
+    const totalPlannedCostBadge = document.getElementById('totalPlannedCostBadge');
+    const remainingBudgetBadge = document.getElementById('remainingBudgetBadge');
+    const costPerPersonBadge = document.getElementById('costPerPersonBadge');
+    const currencySymbolLabel = document.getElementById('currencySymbolLabel');
+    const categoryBreakdownBars = document.getElementById('categoryBreakdownBars');
+    const expenseTableBody = document.getElementById('expenseTableBody');
+    const expenseCountText = document.getElementById('expenseCountText');
+
+    const activityModal = document.getElementById('activityModal');
+    const activityForm = document.getElementById('activityForm');
+    const activityModalTitle = document.getElementById('activityModalTitle');
+    const editingActivityId = document.getElementById('editingActivityId');
+    const modalActivityName = document.getElementById('modalActivityName');
+    const modalActivityTime = document.getElementById('modalActivityTime');
+    const modalActivityCategory = document.getElementById('modalActivityCategory');
+    const modalActivityCost = document.getElementById('modalActivityCost');
+    const modalActivityDuration = document.getElementById('modalActivityDuration');
+    const modalActivityLocation = document.getElementById('modalActivityLocation');
+    const modalActivityNotes = document.getElementById('modalActivityNotes');
+    const openAddActivityModalBtn = document.getElementById('openAddActivityModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+
+    const packingListGrid = document.getElementById('packingListGrid');
+    const packingProgressBar = document.getElementById('packingProgressBar');
+    const packingProgressText = document.getElementById('packingProgressText');
+    const newPackingItemInput = document.getElementById('newPackingItemInput');
+    const newPackingCategorySelect = document.getElementById('newPackingCategorySelect');
+    const addPackingItemBtn = document.getElementById('addPackingItemBtn');
+    const resetPackingBtn = document.getElementById('resetPackingBtn');
+
+    const routeSvgCanvas = document.getElementById('routeSvgCanvas');
+    const routeStatsSummary = document.getElementById('routeStatsSummary');
+    const routeTimelineContainer = document.getElementById('routeTimelineContainer');
+    const mapDayBadge = document.getElementById('mapDayBadge');
+    const centerMapBtn = document.getElementById('centerMapBtn');
+
+    const summaryTourTitle = document.getElementById('summaryTourTitle');
+    const summaryTourSubtitle = document.getElementById('summaryTourSubtitle');
+    const masterSummaryTimeline = document.getElementById('masterSummaryTimeline');
+
+    const getCurrency = () => tourState.currency || '$';
+
+    const getCategoryIcon = (category) => {
+      switch (category) {
+        case 'Food': return '🍜';
+        case 'Transport': return '🚄';
+        case 'Stay': return '🏨';
+        case 'Shopping': return '🛍️';
+        case 'Activity': return '🎭';
+        case 'Sightseeing': default: return '🏛️';
+      }
+    };
+
+    const getCategoryBadgeClass = (category) => {
+      switch (category) {
+        case 'Food': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+        case 'Transport': return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300';
+        case 'Stay': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300';
+        case 'Shopping': return 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300';
+        case 'Activity': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
+        case 'Sightseeing': default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
+      }
+    };
+
+    function renderAll() {
+      renderHeaderMeta();
+      renderDaySelector();
+      renderActiveDay();
+      renderBudgetAndExpenses();
+      renderRouteMap();
+      renderPackingList();
+      renderSummaryTimeline();
+    }
+
+    function renderHeaderMeta() {
+      tripTitleInput.value = tourState.title;
+      tripDestInput.value = tourState.destination;
+      travelersInput.value = tourState.travelers;
+      tripStyleInput.value = tourState.style;
+      startDateInput.value = tourState.startDate;
+      endDateInput.value = tourState.endDate;
+      currencySelect.value = tourState.currency;
+      totalBudgetInput.value = tourState.totalBudget;
+
+      totalDaysBadge.textContent = `${tourState.days.length} Days`;
+
+      let totalStops = 0;
+      tourState.days.forEach(d => totalStops += d.activities.length);
+      totalActivitiesBadge.textContent = `${totalStops} Stops`;
+
+      document.querySelectorAll('.modal-currency-symbol').forEach(el => el.textContent = getCurrency());
+      currencySymbolLabel.textContent = getCurrency();
+    }
+
+    function renderDaySelector() {
+      daySelectorContainer.innerHTML = '';
+      tourState.days.forEach((day, index) => {
+        const btn = document.createElement('button');
+        const isActive = index === activeDayIndex;
+        btn.className = `px-3.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap ${
+          isActive 
+            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30' 
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+        }`;
+        btn.innerHTML = `<span>Day ${day.dayNum}</span><span class="opacity-75 text-[10px]">(${day.activities.length})</span>`;
+        btn.onclick = () => {
+          activeDayIndex = index;
+          renderDaySelector();
+          renderActiveDay();
+          renderRouteMap();
+        };
+        daySelectorContainer.appendChild(btn);
+      });
+    }
+
+    function renderActiveDay() {
+      if (activeDayIndex >= tourState.days.length) {
+        activeDayIndex = Math.max(0, tourState.days.length - 1);
+      }
+      const day = tourState.days[activeDayIndex];
+      if (!day) return;
+
+      currentDayBadge.textContent = `Day ${day.dayNum}`;
+      currentDayTitleInput.value = day.title;
+      dayWeatherSelect.value = day.weather || "☀️ Sunny & Clear";
+
+      try {
+        const base = new Date(tourState.startDate);
+        base.setDate(base.getDate() + (day.dayNum - 1));
+        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        currentDayDateText.textContent = `${base.toLocaleDateString(undefined, options)} • ${tourState.destination}`;
+      } catch (e) {
+        currentDayDateText.textContent = `Day ${day.dayNum} • ${tourState.destination}`;
+      }
+
+      activityListContainer.innerHTML = '';
+      if (!day.activities || day.activities.length === 0) {
+        noActivitiesMessage.classList.remove('hidden');
+      } else {
+        noActivitiesMessage.classList.add('hidden');
+        day.activities.forEach((act, actIndex) => {
+          const card = document.createElement('div');
+          card.className = "p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 group";
+          
+          card.innerHTML = `
+            <div class="flex items-start sm:items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-base shrink-0">
+                ${getCategoryIcon(act.category)}
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-xs text-slate-800 dark:text-slate-100">${act.name}</span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${getCategoryBadgeClass(act.category)}">${act.category}</span>
+                  <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">⏱️ ${act.time} (${act.duration || 1.5}h)</span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                  <span>📍 ${act.location || 'Local Spot'}</span>
+                  ${act.notes ? `<span>• 📝 ${act.notes}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
+              <span class="font-bold text-xs text-slate-800 dark:text-slate-200">
+                ${getCurrency()}${act.cost}
+              </span>
+              <div class="flex items-center gap-1 opacity-90 sm:opacity-40 group-hover:opacity-100 transition">
+                <button title="Move Up" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onclick="moveActivity(${actIndex}, -1)">▲</button>
+                <button title="Move Down" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onclick="moveActivity(${actIndex}, 1)">▼</button>
+                <button title="Edit Activity" class="p-1 text-blue-500 hover:text-blue-700" onclick="openEditActivityModal('${act.id}')">✏️</button>
+                <button title="Remove Activity" class="p-1 text-red-500 hover:text-red-700" onclick="deleteActivity('${act.id}')">🗑️</button>
+              </div>
+            </div>
+          `;
+          activityListContainer.appendChild(card);
+        });
+      }
+
+      renderQuickSuggestions();
+    }
+
+    function renderQuickSuggestions() {
+      quickSuggestionsBar.innerHTML = '';
+      const list = DESTINATION_SUGGESTIONS.default;
+      list.forEach(item => {
+        const chip = document.createElement('button');
+        chip.className = "px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/30 text-slate-700 dark:text-slate-300 transition flex items-center gap-1 whitespace-nowrap";
+        chip.innerHTML = `<span>+ ${getCategoryIcon(item.category)} ${item.name}</span> <span class="text-slate-400">(${getCurrency()}${item.cost})</span>`;
+        chip.onclick = () => {
+          const newAct = {
+            id: 'act_' + Date.now(),
+            name: item.name,
+            time: "15:00",
+            category: item.category,
+            cost: item.cost,
+            duration: item.duration,
+            location: tourState.destination,
+            notes: item.notes
+          };
+          tourState.days[activeDayIndex].activities.push(newAct);
+          renderAll();
+        };
+        quickSuggestionsBar.appendChild(chip);
+      });
+    }
+
+    function renderRouteMap() {
+      mapDayBadge.textContent = `Showing Day ${activeDayIndex + 1} Route`;
+      const day = tourState.days[activeDayIndex];
+      const activities = day ? day.activities : [];
+
+      routeSvgCanvas.innerHTML = '';
+      routeTimelineContainer.innerHTML = '';
+
+      if (!activities || activities.length === 0) {
+        routeStatsSummary.textContent = "No stops scheduled on this day";
+        routeSvgCanvas.innerHTML = `
+          <text x="50%" y="50%" fill="#94a3b8" font-size="13" text-anchor="middle" dominant-baseline="middle">
+            Add activities to see the connected route & waypoints
+          </text>
+        `;
+        return;
+      }
+
+      const width = routeSvgCanvas.clientWidth || 600;
+      const height = routeSvgCanvas.clientHeight || 260;
+      const count = activities.length;
+      const points = [];
+
+      activities.forEach((act, i) => {
+        const x = count === 1 ? width / 2 : 50 + (i / (count - 1)) * (width - 100);
+        const y = (height / 2) + Math.sin(i * 1.5) * 45;
+        points.push({ x, y, act, index: i + 1 });
+      });
+
+      if (points.length > 1) {
+        let pathD = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length; i++) {
+          const prev = points[i - 1];
+          const curr = points[i];
+          const cx1 = (prev.x + curr.x) / 2;
+          const cy1 = prev.y;
+          const cx2 = (prev.x + curr.x) / 2;
+          const cy2 = curr.y;
+          pathD += ` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${curr.x} ${curr.y}`;
+        }
+
+        const glowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        glowPath.setAttribute("d", pathD);
+        glowPath.setAttribute("fill", "none");
+        glowPath.setAttribute("stroke", "#3b82f6");
+        glowPath.setAttribute("stroke-width", "5");
+        glowPath.setAttribute("stroke-opacity", "0.3");
+        routeSvgCanvas.appendChild(glowPath);
+
+        const linePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        linePath.setAttribute("d", pathD);
+        linePath.setAttribute("fill", "none");
+        linePath.setAttribute("stroke", "#60a5fa");
+        linePath.setAttribute("stroke-width", "2.5");
+        linePath.setAttribute("stroke-dasharray", "6,6");
+        routeSvgCanvas.appendChild(linePath);
+      }
+
+      points.forEach((pt) => {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "cursor-pointer group");
+        g.onclick = () => openEditActivityModal(pt.act.id);
+
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", pt.x);
+        circle.setAttribute("cy", pt.y);
+        circle.setAttribute("r", "14");
+        circle.setAttribute("fill", "#2563eb");
+        circle.setAttribute("stroke", "#ffffff");
+        circle.setAttribute("stroke-width", "2.5");
+        g.appendChild(circle);
+
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", pt.x);
+        text.setAttribute("y", pt.y + 4);
+        text.setAttribute("fill", "#ffffff");
+        text.setAttribute("font-size", "11");
+        text.setAttribute("font-weight", "bold");
+        text.setAttribute("text-anchor", "middle");
+        text.textContent = pt.index;
+        g.appendChild(text);
+
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("x", pt.x);
+        label.setAttribute("y", pt.y - 20);
+        label.setAttribute("fill", "#e2e8f0");
+        label.setAttribute("font-size", "11");
+        label.setAttribute("font-weight", "600");
+        label.setAttribute("text-anchor", "middle");
+        label.textContent = pt.act.name.length > 20 ? pt.act.name.substring(0, 18) + '...' : pt.act.name;
+        g.appendChild(label);
+
+        routeSvgCanvas.appendChild(g);
+      });
+
+      const estDistance = (activities.length * 2.1).toFixed(1);
+      routeStatsSummary.textContent = `🛣️ Route: ${activities.length} Stops • Approx. ${estDistance} km (${(activities.length * 35)} mins transit)`;
+
+      activities.forEach((act, idx) => {
+        const item = document.createElement('div');
+        item.className = "p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between";
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0">${idx + 1}</span>
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-100">${act.name}</div>
+              <div class="text-[10px] text-slate-400">⏱️ ${act.time} • ${act.category}</div>
+            </div>
+          </div>
+          <span class="font-mono text-slate-500">${getCurrency()}${act.cost}</span>
+        `;
+        routeTimelineContainer.appendChild(item);
+      });
+    }
+
+    function renderBudgetAndExpenses() {
+      let totalCost = 0;
+      const categories = { Stay: 0, Food: 0, Transport: 0, Activities: 0, Shopping: 0, Sightseeing: 0 };
+      const allExpenses = [];
+
+      tourState.days.forEach(day => {
+        day.activities.forEach(act => {
+          const cost = Number(act.cost) || 0;
+          totalCost += cost;
+          if (categories[act.category] !== undefined) {
+            categories[act.category] += cost;
+          } else {
+            categories.Activities += cost;
+          }
+          allExpenses.push({ ...act, dayNum: day.dayNum });
+        });
+      });
+
+      const totalBudget = Number(tourState.totalBudget) || 1;
+      const remaining = totalBudget - totalCost;
+      const percent = Math.min(100, Math.round((totalCost / totalBudget) * 100));
+
+      budgetPercentText.textContent = `${percent}% Used`;
+      budgetProgressBar.style.width = `${percent}%`;
+
+      if (percent > 100) {
+        budgetProgressBar.className = "bg-red-500 h-full rounded-full transition-all duration-300";
+        budgetPercentText.className = "font-bold text-red-500";
+      } else if (percent > 85) {
+        budgetProgressBar.className = "bg-amber-500 h-full rounded-full transition-all duration-300";
+        budgetPercentText.className = "font-bold text-amber-500";
+      } else {
+        budgetProgressBar.className = "bg-blue-600 h-full rounded-full transition-all duration-300";
+        budgetPercentText.className = "font-bold text-blue-600 dark:text-blue-400";
+      }
+
+      totalPlannedCostBadge.textContent = `${getCurrency()}${totalCost.toLocaleString()}`;
+      remainingBudgetBadge.textContent = `${getCurrency()}${remaining.toLocaleString()}`;
+      if (remaining < 0) {
+        remainingBudgetBadge.className = "text-base font-extrabold text-red-500";
+      } else {
+        remainingBudgetBadge.className = "text-base font-extrabold text-emerald-600 dark:text-emerald-400";
+      }
+
+      const travelers = Number(tourState.travelers) || 1;
+      const perPerson = Math.round(totalCost / travelers);
+      costPerPersonBadge.textContent = `${getCurrency()}${perPerson.toLocaleString()} / person (${travelers} travelers)`;
+
+      categoryBreakdownBars.innerHTML = '';
+      const catList = [
+        { name: "Stay", color: "bg-purple-500", label: "🏨 Accommodation & Hotels" },
+        { name: "Food", color: "bg-amber-500", label: "🍜 Food & Dining" },
+        { name: "Transport", color: "bg-cyan-500", label: "🚄 Travel & Local Transit" },
+        { name: "Sightseeing", color: "bg-blue-500", label: "🏛️ Sightseeing & Entry Tickets" },
+        { name: "Activities", color: "bg-emerald-500", label: "🎭 Experiences & Tours" },
+        { name: "Shopping", color: "bg-pink-500", label: "🛍️ Shopping & Souvenirs" }
+      ];
+
+      catList.forEach(c => {
+        const amt = categories[c.name] || 0;
+        const p = totalCost > 0 ? Math.round((amt / totalCost) * 100) : 0;
+        const row = document.createElement('div');
+        row.className = "space-y-1";
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-slate-700 dark:text-slate-300">${c.label}</span>
+            <span class="font-bold text-slate-800 dark:text-slate-200">${getCurrency()}${amt.toLocaleString()} <span class="text-slate-400 font-normal">(${p}%)</span></span>
+          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div class="${c.color} h-full rounded-full transition-all duration-300" style="width: ${p}%"></div>
+          </div>
+        `;
+        categoryBreakdownBars.appendChild(row);
+      });
+
+      expenseCountText.textContent = `${allExpenses.length} items`;
+      expenseTableBody.innerHTML = '';
+      allExpenses.forEach(exp => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/40 transition";
+        tr.innerHTML = `
+          <td class="py-2.5 font-medium text-slate-800 dark:text-slate-200">${exp.name}</td>
+          <td class="py-2.5"><span class="px-2 py-0.5 rounded-md text-[10px] font-semibold ${getCategoryBadgeClass(exp.category)}">${exp.category}</span></td>
+          <td class="py-2.5 text-slate-500">Day ${exp.dayNum}</td>
+          <td class="py-2.5 text-right font-bold text-slate-700 dark:text-slate-300">${getCurrency()}${exp.cost}</td>
+          <td class="py-2.5 text-center">
+            <button class="text-red-400 hover:text-red-600 text-xs" onclick="deleteActivity('${exp.id}')">✕</button>
+          </td>
+        `;
+        expenseTableBody.appendChild(tr);
+      });
+    }
+
+    function renderPackingList() {
+      const list = tourState.packing || [];
+      const total = list.length;
+      const checkedCount = list.filter(i => i.checked).length;
+      const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
+
+      packingProgressText.textContent = `${checkedCount} of ${total} Packed (${percent}%)`;
+      packingProgressBar.style.width = `${percent}%`;
+
+      const categories = {};
+      list.forEach((item, index) => {
+        const cat = item.category || 'Gear';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push({ ...item, globalIndex: index });
+      });
+
+      packingListGrid.innerHTML = '';
+      Object.keys(categories).forEach(cat => {
+        const card = document.createElement('div');
+        card.className = "p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 space-y-3";
+        
+        let itemsHtml = '';
+        categories[cat].forEach(it => {
+          itemsHtml += `
+            <div class="flex items-center justify-between text-xs py-1 group">
+              <label class="flex items-center gap-2 cursor-pointer flex-1">
+                <input type="checkbox" ${it.checked ? 'checked' : ''} onchange="togglePackingItem(${it.globalIndex})" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600">
+                <span class="${it.checked ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}">${it.item}</span>
+              </label>
+              <button class="text-slate-300 hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition px-1" onclick="removePackingItem(${it.globalIndex})">✕</button>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700 pb-2">
+            ${cat}
+          </h4>
+          <div class="space-y-1">
+            ${itemsHtml}
+          </div>
+        `;
+        packingListGrid.appendChild(card);
+      });
+    }
+
+    function renderSummaryTimeline() {
+      summaryTourTitle.textContent = tourState.title;
+      summaryTourSubtitle.textContent = `${tourState.days.length} Days in ${tourState.destination} • ${tourState.travelers} Travelers • ${tourState.style}`;
+      
+      masterSummaryTimeline.innerHTML = '';
+      tourState.days.forEach(day => {
+        const dayBox = document.createElement('div');
+        dayBox.className = "p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/70 space-y-3";
+
+        let actHtml = '';
+        if (day.activities.length === 0) {
+          actHtml = '<p class="text-xs text-slate-400 italic">No scheduled activities recorded.</p>';
+        } else {
+          day.activities.forEach(act => {
+            actHtml += `
+              <div class="flex items-start justify-between text-xs border-l-2 border-blue-500 pl-3 py-1">
+                <div>
+                  <div class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                    <span>${getCategoryIcon(act.category)}</span>
+                    <span>${act.name}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">(${act.time})</span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    📍 ${act.location || tourState.destination} ${act.notes ? `• ${act.notes}` : ''}
+                  </div>
+                </div>
+                <div class="font-bold text-slate-700 dark:text-slate-300 font-mono shrink-0">
+                  ${getCurrency()}${act.cost}
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        dayBox.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white">Day ${day.dayNum}</span>
+              <span class="font-bold text-sm text-slate-800 dark:text-slate-100">${day.title}</span>
+            </div>
+            <span class="text-xs text-slate-400">${day.weather || '☀️ Clear'}</span>
+          </div>
+          <div class="space-y-2">
+            ${actHtml}
+          </div>
+        `;
+        masterSummaryTimeline.appendChild(dayBox);
+      });
+    }
+
+    function addDay() {
+      const nextNum = tourState.days.length + 1;
+      tourState.days.push({
+        dayNum: nextNum,
+        title: `Exploration & Discoveries`,
+        weather: "☀️ Sunny & Clear",
+        activities: []
+      });
+      activeDayIndex = tourState.days.length - 1;
+      renderAll();
+    }
+
+    function deleteDay() {
+      if (tourState.days.length <= 1) {
+        alert("A tour plan must have at least one day!");
+        return;
+      }
+      if (confirm(`Delete Day ${activeDayIndex + 1}? All activities on this day will be removed.`)) {
+        tourState.days.splice(activeDayIndex, 1);
+        tourState.days.forEach((d, idx) => d.dayNum = idx + 1);
+        activeDayIndex = Math.max(0, activeDayIndex - 1);
+        renderAll();
+      }
+    }
+
+    function moveActivity(index, direction) {
+      const activities = tourState.days[activeDayIndex].activities;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= activities.length) return;
+      const temp = activities[index];
+      activities[index] = activities[targetIndex];
+      activities[targetIndex] = temp;
+      renderAll();
+    }
+
+    function deleteActivity(id) {
+      tourState.days.forEach(day => {
+        day.activities = day.activities.filter(a => a.id !== id);
+      });
+      renderAll();
+    }
+
+    function openAddActivityModal() {
+      editingActivityId.value = '';
+      activityModalTitle.innerHTML = '📍 Add New Activity';
+      activityForm.reset();
+      modalActivityTime.value = '10:00';
+      modalActivityCost.value = '25';
+      modalActivityDuration.value = '2';
+      activityModal.classList.remove('hidden');
+    }
+
+    function openEditActivityModal(id) {
+      let found = null;
+      tourState.days.forEach(d => {
+        const match = d.activities.find(a => a.id === id);
+        if (match) found = match;
+      });
+      if (!found) return;
+
+      editingActivityId.value = found.id;
+      activityModalTitle.innerHTML = '✏️ Edit Activity';
+      modalActivityName.value = found.name;
+      modalActivityTime.value = found.time || '10:00';
+      modalActivityCategory.value = found.category || 'Sightseeing';
+      modalActivityCost.value = found.cost || 0;
+      modalActivityDuration.value = found.duration || 2;
+      modalActivityLocation.value = found.location || '';
+      modalActivityNotes.value = found.notes || '';
+      activityModal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      activityModal.classList.add('hidden');
+    }
+
+    activityForm.onsubmit = (e) => {
+      e.preventDefault();
+      const id = editingActivityId.value;
+      const actData = {
+        id: id || 'act_' + Date.now(),
+        name: modalActivityName.value.trim(),
+        time: modalActivityTime.value,
+        category: modalActivityCategory.value,
+        cost: Number(modalActivityCost.value) || 0,
+        duration: Number(modalActivityDuration.value) || 1.5,
+        location: modalActivityLocation.value.trim(),
+        notes: modalActivityNotes.value.trim()
+      };
+
+      if (id) {
+        tourState.days.forEach(d => {
+          const idx = d.activities.findIndex(a => a.id === id);
+          if (idx !== -1) d.activities[idx] = actData;
+        });
+      } else {
+        tourState.days[activeDayIndex].activities.push(actData);
+      }
+      closeModal();
+      renderAll();
+    };
+
+    function togglePackingItem(index) {
+      if (tourState.packing[index]) {
+        tourState.packing[index].checked = !tourState.packing[index].checked;
+        renderPackingList();
+      }
+    }
+
+    function removePackingItem(index) {
+      tourState.packing.splice(index, 1);
+      renderPackingList();
+    }
+
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => {
+          t.classList.remove('active', 'border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+          t.classList.add('border-transparent', 'text-slate-500');
+        });
+        tab.classList.add('active', 'border-blue-600', 'text-blue-600', 'dark:text-blue-400');
+        tab.classList.remove('border-transparent', 'text-slate-500');
+
+        const target = tab.getAttribute('data-target');
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+        const activePane = document.getElementById(target);
+        if (activePane) activePane.classList.remove('hidden');
+
+        if (target === 'routeMapSection') {
+          setTimeout(renderRouteMap, 50);
+        }
+      });
+    });
+
+    addDayBtn.onclick = addDay;
+    deleteDayBtn.onclick = deleteDay;
+    openAddActivityModalBtn.onclick = openAddActivityModal;
+    closeModalBtn.onclick = closeModal;
+    cancelModalBtn.onclick = closeModal;
+
+    currentDayTitleInput.onchange = (e) => {
+      tourState.days[activeDayIndex].title = e.target.value;
+      renderSummaryTimeline();
+    };
+    dayWeatherSelect.onchange = (e) => {
+      tourState.days[activeDayIndex].weather = e.target.value;
+      renderSummaryTimeline();
+    };
+
+    tripTitleInput.onchange = (e) => {
+      tourState.title = e.target.value;
+      renderSummaryTimeline();
+    };
+    tripDestInput.onchange = (e) => {
+      tourState.destination = e.target.value;
+      renderAll();
+    };
+    travelersInput.onchange = (e) => {
+      tourState.travelers = Number(e.target.value) || 1;
+      renderBudgetAndExpenses();
+      renderSummaryTimeline();
+    };
+    tripStyleInput.onchange = (e) => {
+      tourState.style = e.target.value;
+      renderSummaryTimeline();
+    };
+    startDateInput.onchange = (e) => {
+      tourState.startDate = e.target.value;
+      renderActiveDay();
+    };
+    totalBudgetInput.onchange = (e) => {
+      tourState.totalBudget = Number(e.target.value) || 0;
+      renderBudgetAndExpenses();
+    };
+
+    currencySelect.onchange = (e) => {
+      tourState.currency = e.target.value;
+      renderAll();
+    };
+
+    presetSelect.onchange = (e) => {
+      const key = e.target.value;
+      if (PRESETS[key]) {
+        tourState = JSON.parse(JSON.stringify(PRESETS[key]));
+        activeDayIndex = 0;
+        renderAll();
+      }
+    };
+
+    document.getElementById('addCustomExpenseBtn').onclick = () => {
+      const name = document.getElementById('customExpenseName').value.trim();
+      const cat = document.getElementById('customExpenseCategory').value;
+      const cost = Number(document.getElementById('customExpenseCost').value) || 0;
+      if (!name) {
+        alert("Please enter an expense name.");
+        return;
+      }
+      tourState.days[activeDayIndex].activities.push({
+        id: 'exp_' + Date.now(),
+        name: name,
+        time: "12:00",
+        category: cat,
+        cost: cost,
+        duration: 1,
+        location: tourState.destination,
+        notes: "Direct expense logged"
+      });
+      document.getElementById('customExpenseName').value = '';
+      document.getElementById('customExpenseCost').value = '';
+      renderAll();
+    };
+
+    addPackingItemBtn.onclick = () => {
+      const val = newPackingItemInput.value.trim();
+      const cat = newPackingCategorySelect.value;
+      if (val) {
+        tourState.packing.push({ item: val, category: cat, checked: false });
+        newPackingItemInput.value = '';
+        renderPackingList();
+      }
+    };
+    resetPackingBtn.onclick = () => {
+      tourState.packing.forEach(i => i.checked = false);
+      renderPackingList();
+    };
+
+    document.getElementById('themeToggleBtn').onclick = () => {
+      document.documentElement.classList.toggle('dark');
+    };
+
+    centerMapBtn.onclick = () => renderRouteMap();
+
+    document.getElementById('exportJsonBtn').onclick = () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tourState, null, 2));
+      const dl = document.createElement('a');
+      dl.setAttribute("href", dataStr);
+      dl.setAttribute("download", `${tourState.title.replace(/\s+/g, '_').toLowerCase()}_tour_plan.json`);
+      dl.click();
+    };
+
+    document.getElementById('printBtn').onclick = () => window.print();
+
+    window.onload = () => {
+      renderAll();
+    };
+  </script>
+</body>
+</html>
